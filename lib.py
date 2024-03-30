@@ -28,9 +28,11 @@ class Backpack:
         ONE_WEEK = '1w'
         ONE_MONTH = '1month'
 
+
     def __init__(self, public_key: str, private_key: str):
         self.__public_key = public_key
         self.__private_key = private_key
+
 
     def __header(self):
         header = {
@@ -39,6 +41,7 @@ class Backpack:
         }
         return header
     
+
     def __header_private(self, timestamp: int, signature: str, window: int = 5000):
         header = {
             'Content-Type': 'application/json',
@@ -49,6 +52,7 @@ class Backpack:
             'X-WINDOW': window
         }
         return header
+
 
     def __get(self, request_path, params=''):
         base_url = 'https://api.backpack.exchange/'
@@ -61,6 +65,7 @@ class Backpack:
             return errex
         return response.json()
 
+
     def __signature(self, timestamp: int, instruction: str, params: str = ''):
         # order params alphabetically
         if params != '':
@@ -71,6 +76,7 @@ class Backpack:
         loaded_private_key = load_pem_private_key(self.__private_key.encode())
         signature = base64.b64encode(loaded_private_key.sign(completed_params.encode()))
         return signature
+
 
     def __get_private(self, request_path: str, instruction: str, params: str=''):
         base_url = 'https://api.backpack.exchange/'
@@ -84,7 +90,8 @@ class Backpack:
         except requests.exceptions.RequestException as errex:
             return errex
         return response.json()
-    
+
+
     def status(self):
         """
         Get the current status of the platform.
@@ -92,6 +99,7 @@ class Backpack:
             The status of the platform.
         """
         return self.__get('api/v1/status')
+
     
     def ping(self):
         """
@@ -108,6 +116,7 @@ class Backpack:
         except requests.exceptions.RequestException as errex:
             return errex
     
+
     def time(self):
         """
         Get the current time of the platform.
@@ -116,6 +125,7 @@ class Backpack:
         """
         return self.__get('api/v1/time')
     
+
     def get_trades(self, symbol: str, limit: int = 100):
         """
         Get the trades for a specific symbol.
@@ -127,6 +137,7 @@ class Backpack:
         """
         return self.__get('api/v1/trades', f'?symbol={symbol}&limit={limit}')
     
+
     def get_historical_trades(self, symbol: str, limit: int = 100, offset: int = 0):
         """
         Get the historical trades for a specific symbol.
@@ -139,6 +150,7 @@ class Backpack:
         """
         return self.__get('api/v1/trades/history', f'?symbol={symbol}&limit={limit}&offset={offset}')
 
+
     def get_assets(self):
         """
         Get all the assets that are supported by the exchange.
@@ -147,6 +159,7 @@ class Backpack:
         """
         return self.__get('api/v1/assets')
     
+
     def get_markets(self):
         """
         Get all the markets that are supported by the exchange.
@@ -154,7 +167,8 @@ class Backpack:
             All the markets that are supported by the exchange.
         """
         return self.__get('api/v1/markets')
-    
+
+
     def get_ticker(self, symbol: str):
         """
         Get the ticker for a specific symbol.
@@ -164,7 +178,8 @@ class Backpack:
             The ticker for the specified symbol.
         """
         return self.__get('api/v1/ticker', f'?symbol={symbol}')
-    
+
+
     def get_tickers(self):
         """
         Get summarised statistics for the last 24 hours for all market symbols..
@@ -172,7 +187,8 @@ class Backpack:
             Summarised statistics for the last 24 hours for all market symbols..
         """
         return self.__get('api/v1/tickers')
-    
+
+
     def get_depth(self, symbol: str):
         """
         Get the order book for a specific symbol.
@@ -183,6 +199,7 @@ class Backpack:
         """
         return self.__get('api/v1/depth', f'?symbol={symbol}')
     
+
     def get_kline(self, symbol: str, interval: KlineInterval):
         """
         Get the kline for a specific symbol.
@@ -195,6 +212,7 @@ class Backpack:
         """
         return self.__get('api/v1/klines', f'?symbol={symbol}&interval={interval}')
     
+
     def get_balances(self):
         """
         Get the balances for the authenticated user.
