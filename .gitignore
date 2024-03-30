@@ -1,4 +1,5 @@
 config.py
 bpenv
+__pycache__/
 /pycache/*
 **/__pycache__/
