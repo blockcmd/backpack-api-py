@@ -210,7 +210,7 @@ class Backpack:
         Returns:
             The kline for the specified symbol.
         """
-        return self.__get('api/v1/klines', f'?symbol={symbol}&interval={interval}')
+        return self.__get('api/v1/klines', f'?symbol={symbol}&interval={interval.value}')
     
 
     def get_balances(self):
