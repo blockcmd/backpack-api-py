@@ -1,7 +1,7 @@
 import requests
-import hashlib
-import hmac
-import json
+# import hashlib
+# import hmac
+# import json
 from urllib.parse import urlencode
 from enum import Enum
 from time import time
@@ -99,7 +99,14 @@ class Backpack:
         Returns:
             A pong from the platform.
         """
-        return self.__get('api/v1/ping')
+        url = 'https://api.backpack.exchange/api/v1/ping'
+        header = self.__header()
+        try:
+            response = requests.get(url, headers=header)
+            response.raise_for_status()
+            return response.text
+        except requests.exceptions.RequestException as errex:
+            return errex
     
     def time(self):
         """
