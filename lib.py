@@ -1,13 +1,9 @@
 import requests
-# import hashlib
-# import hmac
-# import json
-from urllib.parse import urlencode
+import json
 from enum import Enum
 from time import time
 import base64
-from cryptography.hazmat.primitives.serialization import load_pem_private_key
-
+from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
 class Backpack:
 
@@ -31,7 +27,7 @@ class Backpack:
 
     def __init__(self, public_key: str, private_key: str):
         self.__public_key = public_key
-        self.__private_key = private_key
+        self.__private_key = Ed25519PrivateKey.from_private_bytes(base64.b64decode(private_key))
 
 
     def __header(self):
@@ -44,12 +40,11 @@ class Backpack:
 
     def __header_private(self, timestamp: int, signature: str, window: int = 5000):
         header = {
-            'Content-Type': 'application/json',
-            'Connection': 'keep-alive',
-            'X-API-KEY': base64.b64encode(self.__public_key.encode()),
-            'X-SIGNATURE': signature,
-            'X-TIMESTAMP': timestamp,
-            'X-WINDOW': window
+            'Content-Type': 'application/json; charset=utf-8',
+            'X-API-KEY': self.__public_key,
+            'X-Signature': signature,
+            'X-Timestamp': str(timestamp),
+            'X-Window': str(window)
         }
         return header
 
@@ -58,12 +53,11 @@ class Backpack:
         base_url = 'https://api.backpack.exchange/'
         url = base_url + request_path + params
         header = self.__header()
+        response = requests.get(url, headers=header)
         try:
-            response = requests.get(url, headers=header)
-            response.raise_for_status()
-        except requests.exceptions.RequestException as errex:
-            return errex
-        return response.json()
+            return response.json()
+        except json.JSONDecodeError:
+            return response.text
 
 
     def __signature(self, timestamp: int, instruction: str, params: str = ''):
@@ -73,8 +67,8 @@ class Backpack:
         else:
             ordered_params = ''
         completed_params = f'instruction={instruction}' + ordered_params + f'&timestamp={timestamp}&window=5000'
-        loaded_private_key = load_pem_private_key(self.__private_key.encode())
-        signature = base64.b64encode(loaded_private_key.sign(completed_params.encode()))
+        raw_signature = self.__private_key.sign(completed_params.encode())
+        signature = base64.b64encode(raw_signature).decode()
         return signature
 
 
@@ -84,12 +78,11 @@ class Backpack:
         timestamp = int(time() * 1000)
         signature = self.__signature(timestamp, instruction, params)
         header = self.__header_private(timestamp, signature)
+        response = requests.get(url, headers=header)
         try:
-            response = requests.get(url, headers=header)
-            response.raise_for_status()
-        except requests.exceptions.RequestException as errex:
-            return errex
-        return response.json()
+            return response.json()
+        except json.JSONDecodeError:
+            return response.text
 
 
     def status(self):
@@ -107,14 +100,7 @@ class Backpack:
         Returns:
             A pong from the platform.
         """
-        url = 'https://api.backpack.exchange/api/v1/ping'
-        header = self.__header()
-        try:
-            response = requests.get(url, headers=header)
-            response.raise_for_status()
-            return response.text
-        except requests.exceptions.RequestException as errex:
-            return errex
+        return self.__get('api/v1/ping')
     
 
     def time(self):

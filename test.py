@@ -1,7 +1,10 @@
 from lib import Backpack
 from config import Config
 
+# Create a config object to get the public and private keys
 config = Config()
+
+# Create a Backpack object
 bp = Backpack(config.get_config()['public_key'], config.get_config()['private_key'])
 
 # Test status
@@ -33,3 +36,6 @@ print('Get depth:', bp.get_depth('SOL_USDC'))
 
 # Test get klines
 print('Get klines:', bp.get_kline('SOL_USDC', bp.KlineInterval.ONE_MINUTE))
+
+# Test get account
+print('Get account:', bp.get_balances())
