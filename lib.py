@@ -24,6 +24,31 @@ class Backpack:
         ONE_WEEK = '1w'
         ONE_MONTH = '1month'
 
+    class Blockchain(Enum):
+        ETHEREUM = 'Ethereum'
+        SOLANA = 'Solana'
+        POLYGON = 'Polygon'
+        BITCOIN = 'Bitcoin'
+
+    class OrderType(Enum):
+        LIMIT = 'Limit'
+        MARKET = 'Market'
+
+    class SelfTradePrevention(Enum):
+        REJECT_TAKER = 'RejectTaker'
+        REJECT_MAKER = 'RejectMaker'
+        REJECT_BOTH = 'RejectBoth'
+        ALLOW = 'Allow'
+
+    class Side(Enum): 
+        BID = 'Bid'
+        ASK = 'Ask'
+
+    class TimeInForce(Enum):
+        GTC = 'GTC'
+        IOC = 'IOC'
+        FOK = 'FOK'
+
 
     def __init__(self, public_key: str, private_key: str):
         self.__public_key = public_key
@@ -60,29 +85,67 @@ class Backpack:
             return response.text
 
 
-    def __signature(self, timestamp: int, instruction: str, params: str = ''):
+    def __signature(self, timestamp: int, instruction: str, params: str = '', body: dict = None):
         # order params alphabetically
         if params != '':
-            ordered_params = params.split('&').sort().join('&')
+            sorted_params = params.split('&')[1:]
+            sorted_params.sort()
+            sorted_params = '&' + '&'.join(sorted_params)
         else:
-            ordered_params = ''
-        completed_params = f'instruction={instruction}' + ordered_params + f'&timestamp={timestamp}&window=5000'
+            sorted_params = ''
+        
+        if body:
+            sorted_body = sorted(body.items())
+            sorted_params = ''
+            for key, value in sorted_body:
+                sorted_params += f'&{key}={value}'
+            sorted_params = sorted_params[1:]
+        completed_params = f'instruction={instruction}' + sorted_params + f'&timestamp={timestamp}&window=5000'
+        print(completed_params)
         raw_signature = self.__private_key.sign(completed_params.encode())
         signature = base64.b64encode(raw_signature).decode()
         return signature
 
 
-    def __get_private(self, request_path: str, instruction: str, params: str=''):
+    def __get_private(self, request_path: str, instruction: str, params: str = '', body: dict = {}):
         base_url = 'https://api.backpack.exchange/'
-        url = base_url + request_path + params
+        url = base_url + request_path + f'?instruction={instruction}' + params
+        print(url)
         timestamp = int(time() * 1000)
         signature = self.__signature(timestamp, instruction, params)
         header = self.__header_private(timestamp, signature)
-        response = requests.get(url, headers=header)
+        print(header)
+        response = requests.get(url, headers=header, data=body)
         try:
             return response.json()
         except json.JSONDecodeError:
             return response.text
+        
+        
+    def __post(self, request_path: str, instruction: str, params: str = '', body: dict = None):
+        base_url = 'https://api.backpack.exchange/'
+        url = base_url + request_path + f'?instruction={instruction}' + params
+        timestamp = int(time() * 1000)
+        signature = self.__signature(timestamp, instruction, params, body)
+        header = self.__header_private(timestamp, signature)
+        response = requests.post(url, headers=header, data=json.dumps(body))
+        try:
+            return response.json()
+        except json.JSONDecodeError:
+            return response.text
+        
+
+    def __delete(self, request_path: str, instruction: str, params: str = '', body: dict = None):
+        base_url = 'https://api.backpack.exchange/'
+        url = base_url + request_path + f'?instruction={instruction}' + params
+        timestamp = int(time() * 1000)
+        signature = self.__signature(timestamp, instruction, params, body)
+        header = self.__header_private(timestamp, signature)
+        response = requests.delete(url, headers=header, data=json.dumps(body))
+        try:
+            return response.json()
+        except json.JSONDecodeError:
+            return response.text    
 
 
     def status(self):
@@ -206,3 +269,86 @@ class Backpack:
             The balances for the authenticated user.
         """
         return self.__get_private('api/v1/capital', 'balanceQuery')
+    
+    
+    def get_deposits(self, limit: int = 100, offset: int = 0):
+        """
+        Get the deposits for the authenticated user.
+        Args:
+            limit (int): Limit the number of deposits returned. Default 100, maximum 1000. (Optional)
+            offset (int): The starting point for the deposits. Default is 0. (Optional)
+        Returns:
+            The deposits for the authenticated user.
+        """
+        return self.__get_private('wapi/v1/capital/deposits', 'depositQueryAll', f'&limit={limit}&offset={offset}')
+    
+    
+    def get_deposit_address(self, blockchain: Blockchain):
+        """
+        Get the deposit address for the authenticated user.
+        Args:
+            blockchain (str): The blockchain to retrieve the deposit address for. (Required)
+        Returns:
+            The deposit address for the authenticated user.
+        """
+        return self.__get_private('wapi/v1/capital/deposit/address', 'depositAddressQuery', f'&blockchain={blockchain.value}')
+    
+
+    def get_withdrawals(self, limit: int = 100, offset: int = 0):
+        """
+        Get the withdrawals for the authenticated user.
+        Args:
+            limit (int): Limit the number of withdrawals returned. Default 100, maximum 1000. (Optional)
+            offset (int): The starting point for the withdrawals. Default is 0. (Optional)
+        Returns:
+            The withdrawals for the authenticated user.
+        """
+        return self.__get_private('wapi/v1/capital/withdrawals', 'withdrawalQueryAll', f'&limit={limit}&offset={offset}')
+    
+
+    def get_order_history(self, orderId: str, symbol: str, limit: int = 100, offset: int = 0):
+        """
+        Get the orders for the authenticated user.
+        Args:
+            orderId (str): The order id to retrieve. (Required)
+            symbol (str): The symbol to retrieve the orders for. (Required)
+            limit (int): Limit the number of orders returned. Default 100, maximum 1000. (Optional)
+            offset (int): The starting point for the orders. Default is 0. (Optional)
+        Returns:
+            The orders for the authenticated user.
+        """
+        return self.__get_private('wapi/v1/history/orders', 'orderHistoryQueryAll', f'&limit={limit}&offset={offset}&orderId={orderId}&symbol={symbol}&limit={limit}&offset={offset}')
+    
+
+    def get_fill_history(self, orderId: str, _from: int, _to: int, symbol: str, limit: int = 100, offset: int = 0):
+        """
+        Get the fills for the authenticated user.
+        Args:
+            symbol (str): The symbol to retrieve the fills for. (Required)
+            limit (int): Limit the number of fills returned. Default 100, maximum 1000. (Optional)
+            offset (int): The starting point for the fills. Default is 0. (Optional)
+        Returns:
+            The fills for the authenticated user.
+        """
+        return self.__get_private('wapi/v1/history/fills', 'fillHistoryQueryAll', f'&symbol={symbol}&limit={limit}&offset={offset}')
+    
+
+    def create_order(self, orderType: OrderType, postOnly: str, price: str, quantity: str, selfTradePrevention: SelfTradePrevention, side: Side, symbol: str, timeInForce: TimeInForce, triggerPrice: str, quoteQuantity: str = None, clientId: int = None):
+        """
+        Create an order for the authenticated user.
+        Args:
+            orderType (str): The type of order to create. (Required)
+            postOnly (str): Post only flag. (Required)
+            price (str): The price of the order. (Required)
+            quantity (str): The quantity of the order. (Required)
+            selfTradePrevention (str): Self trade prevention flag. (Required)
+            side (str): The side of the order. (Required)
+            symbol (str): The symbol to create the order for. (Required)
+            timeInForce (str): The time in force of the order. (Required)
+            triggerPrice (str): The trigger price of the order. (Required)
+            quoteQuantity (str): The quote quantity of the order. (Optional)
+            clientId (int): The client id of the order. (Optional)
+        Returns:
+            The order for the authenticated user.
+        """
+        return self.__get_private('wapi/v1/trade/order', 'orderCreate', f'&orderType={orderType}&postOnly={postOnly}&price={price}&quantity={quantity}&selfTradePrevention={selfTradePrevention}&side={side}&symbol={symbol}&timeInForce={timeInForce}&triggerPrice={triggerPrice}&quoteQuantity={quoteQuantity}&clientId={clientId}')
