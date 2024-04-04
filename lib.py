@@ -95,13 +95,15 @@ class Backpack:
             sorted_params = ''
         
         if body:
-            sorted_body = sorted(body.items())
-            sorted_params = ''
-            for key, value in sorted_body:
-                sorted_params += f'&{key}={value}'
-            sorted_params = sorted_params[1:]
-        completed_params = f'instruction={instruction}' + sorted_params + f'&timestamp={timestamp}&window=5000'
-        print(completed_params)
+            body_to_params = ''
+            for key, value in body.items():  # Iterate over items of the body dictionary
+                body_to_params += f'&{key}={value}'
+            body_to_params = body_to_params.split('&')[1:]
+            body_to_params.sort()
+            sorted_string = '&' + '&'.join(body_to_params)
+        else:
+            sorted_string = ''
+        completed_params = f'instruction={instruction}' + sorted_params + sorted_string + f'&timestamp={timestamp}&window=5000'
         raw_signature = self.__private_key.sign(completed_params.encode())
         signature = base64.b64encode(raw_signature).decode()
         return signature
@@ -110,11 +112,9 @@ class Backpack:
     def __get_private(self, request_path: str, instruction: str, params: str = '', body: dict = {}):
         base_url = 'https://api.backpack.exchange/'
         url = base_url + request_path + f'?instruction={instruction}' + params
-        print(url)
         timestamp = int(time() * 1000)
         signature = self.__signature(timestamp, instruction, params)
         header = self.__header_private(timestamp, signature)
-        print(header)
         response = requests.get(url, headers=header, data=body)
         try:
             return response.json()
@@ -333,7 +333,7 @@ class Backpack:
         return self.__get_private('wapi/v1/history/fills', 'fillHistoryQueryAll', f'&symbol={symbol}&limit={limit}&offset={offset}')
     
 
-    def create_order(self, orderType: OrderType, postOnly: str, price: str, quantity: str, selfTradePrevention: SelfTradePrevention, side: Side, symbol: str, timeInForce: TimeInForce, triggerPrice: str, quoteQuantity: str = None, clientId: int = None):
+    def create_order(self, orderType: OrderType, price: str, quantity: str, side: Side, symbol: str, timeInForce: TimeInForce = None, triggerPrice: str = None, quoteQuantity: str = None, clientId: int = None, postOnly: str = None, selfTradePrevention: SelfTradePrevention = None):
         """
         Create an order for the authenticated user.
         Args:
@@ -351,4 +351,27 @@ class Backpack:
         Returns:
             The order for the authenticated user.
         """
-        return self.__get_private('wapi/v1/trade/order', 'orderCreate', f'&orderType={orderType}&postOnly={postOnly}&price={price}&quantity={quantity}&selfTradePrevention={selfTradePrevention}&side={side}&symbol={symbol}&timeInForce={timeInForce}&triggerPrice={triggerPrice}&quoteQuantity={quoteQuantity}&clientId={clientId}')
+        # construct order data, if input is not None
+        order_data = {
+            'orderType': orderType.value,
+            'price': price,
+            'quantity': quantity,
+            'side': side.value,
+            'symbol': symbol,
+        }
+
+        if timeInForce:
+            order_data['timeInForce'] = timeInForce
+        if triggerPrice:
+            order_data['triggerPrice'] = triggerPrice
+        if quoteQuantity:
+            order_data['quoteQuantity'] = quoteQuantity
+        if clientId:
+            order_data['clientId'] = clientId
+        if postOnly:
+            order_data['postOnly'] = postOnly
+        if selfTradePrevention:
+            order_data['selfTradePrevention'] = selfTradePrevention.value
+
+        print(order_data)
+        return self.__post(request_path='api/v1/order', instruction='orderExecute', body=order_data)

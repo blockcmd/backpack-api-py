@@ -28,11 +28,11 @@ bp = Backpack(config.get_config()['public_key'], config.get_config()['private_ke
 # # Test get markets 
 # print ('Get markets:', bp.get_markets())
 
-# # Test ticker
-# print('Get ticker:', bp.get_ticker('USDT_USDC'))
+# Test ticker
+print('Get ticker:', bp.get_ticker('USDT_USDC'))
 
-# #Test get depth
-# print('Get depth:', bp.get_depth('SOL_USDC'))
+#Test get depth
+print('Get depth:', bp.get_depth('SOL_USDC'))
 
 # # Test get klines
 # print('Get klines:', bp.get_kline('SOL_USDC', bp.KlineInterval.ONE_MINUTE))
@@ -41,10 +41,14 @@ bp = Backpack(config.get_config()['public_key'], config.get_config()['private_ke
 # print('Get account:', bp.get_balances())
 
 # # Test get deposits
-# print('Get deposits:', bp.get_deposits())
+print('Get deposits:', bp.get_deposits())
 
 # # Test get deposit address
-print('Get deposit address:', bp.get_deposit_address(bp.Blockchain.SOLANA))
+# print('Get deposit address:', bp.get_deposit_address(bp.Blockchain.SOLANA))
 
 # Test get orders
 # print('Get orders:', bp.get_order_history('SOL_USDC'))
+
+# Test create order
+# result = bp.create_order(orderType=bp.OrderType.LIMIT, side=bp.Side.BID, symbol='SOL_USDC', price='170', quantity='0.1')
+# print('Create order:', result)
